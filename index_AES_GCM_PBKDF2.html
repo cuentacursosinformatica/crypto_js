@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Cifrar con Web Crypto API (AES-GCM + PBKDF2)</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+* { box-sizing: border-box; }
+body { font-family:verdana; font-size:14px; }
+h1 { border-bottom: solid 1px red; border-color:grey; }
+
+div { margin-top:0px; width:90%; margin-left:16px; }
+label { width:250px; margin-bottom:1px; display:block; }
+input { width:100%; margin-top:4px; margin-bottom:8px; }
+button { height:25px; margin-bottom:6px; }
+.boton_grande { width:100%; }
+textarea { width:100%; margin-top:4px; margin-bottom:4px; }
+</style>
+<script>
+async function copiarTextoCifrado(){
+    const mensaje_cifrado = document.getElementById("mensaje_cifrado").value;
+    if (mensaje_cifrado) {
+        navigator.clipboard.writeText(mensaje_cifrado).then(()=>console.log("Copiado al portapapeles"));
+    }
+}
+
+async function cifrar(){
+    const password = document.getElementById("tu_password").value;
+    const mensaje = document.getElementById("mensaje_cifrar").value;
+    if(!password || !mensaje) return alert("Escribe contraseña y mensaje.");
+
+    const enc = new TextEncoder();
+
+    // Generar salt y derivar clave con PBKDF2
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey(
+        {name:"PBKDF2", salt: salt, iterations:100000, hash:"SHA-256"},
+        keyMaterial,
+        {name:"AES-GCM", length:256},
+        true,
+        ["encrypt", "decrypt"]
+    );
+
+    // IV aleatorio
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    // Cifrar
+    const encrypted = await crypto.subtle.encrypt({name:"AES-GCM", iv:iv}, key, enc.encode(mensaje));
+
+    // Convertir a Base64
+    const ciphertext = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+    const saltB64 = btoa(String.fromCharCode(...salt));
+    const ivB64 = btoa(String.fromCharCode(...iv));
+
+    // Combinar en un único string: salt + iv + ciphertext
+    document.getElementById("mensaje_cifrado").value = saltB64 + ":" + ivB64 + ":" + ciphertext;
+}
+
+async function descifrar(){
+    const password = document.getElementById("tu_password").value;
+    const paquete = document.getElementById("mensaje_cifrado").value;
+    if(!password || !paquete) return alert("Escribe contraseña y mensaje cifrado.");
+
+    try {
+        const [saltB64, ivB64, ciphertextB64] = paquete.split(":");
+        const enc = new TextEncoder();
+        const dec = new TextDecoder();
+
+        const salt = Uint8Array.from(atob(saltB64), c => c.charCodeAt(0));
+        const iv = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0));
+        const ciphertext = Uint8Array.from(atob(ciphertextB64), c => c.charCodeAt(0));
+
+        const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+        const key = await crypto.subtle.deriveKey(
+            {name:"PBKDF2", salt: salt, iterations:100000, hash:"SHA-256"},
+            keyMaterial,
+            {name:"AES-GCM", length:256},
+            true,
+            ["encrypt", "decrypt"]
+        );
+
+        const decrypted = await crypto.subtle.decrypt({name:"AES-GCM", iv:iv}, key, ciphertext);
+        document.getElementById("mensaje_cifrado").value = dec.decode(decrypted);
+    } catch(e) {
+        alert("Error al descifrar. Contraseña incorrecta o mensaje corrupto.");
+        console.log(e);
+    }
+}
+</script>
+</head>
+<body>
+<h1>Cifrar AES-GCM + PBKDF2 (Web Crypto)</h1>
+<p>Instrucciones:</p>
+<ol>
+<li>Escribe una contraseña</li>
+<li>Teclea tu mensaje de entrada</li>
+<li>Pulsa el botón para cifrar o descifrar</li>
+</ol>
+<hr><br>
+<div>
+<label for="tu_password">Contraseña:</label>
+<input type="text" id="tu_password" placeholder="escribe tu contraseña">
+</div>
+<div>
+<label for="mensaje_cifrar">Mensaje entrada:</label>
+<input type="text" id="mensaje_cifrar" placeholder="escribe tu mensaje para cifrar">
+</div>
+<br>
+<div>
+<button type="button" class="boton_grande" onclick="cifrar()">CIFRAR</button>    
+</div>
+<div>
+<button type="button" class="boton_grande" onclick="descifrar()">DESCIFRAR</button>
+</div>
+<br>
+<div>
+<label for="mensaje_cifrado">Mensaje salida:</label>
+<textarea rows="6" id="mensaje_cifrado" placeholder="Aquí aparece el mensaje cifrado o descifrado"></textarea>
+</div>
+<div>
+<button type="button" class="boton_grande" onclick="copiarTextoCifrado()">COPIAR SALIDA</button>
+</div>
+</body>
+</html>
