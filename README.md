@@ -1,4 +1,5 @@
 
+
 **Características:**
 
 Algoritmo: AES (Advanced Encryption Standard)
@@ -25,6 +26,7 @@ Autenticación de mensaje:
 - Para seguridad máxima se recomienda AES-GCM (proporciona cifrado + autenticidad) en lugar de CBC.
 - AES-GCM no está soportado por CryptoJS.
 
+
 **Cómo mejorar la seguridad:**
 
 - Usar contraseñas largas y complejas (mínimo 12 caracteres, mezcla de letras, números y símbolos).
@@ -32,15 +34,22 @@ Autenticación de mensaje:
 - Agregar HMAC al mensaje cifrado para detectar modificaciones.
 - Usar derivación de clave fuerte, como PBKDF2 o scrypt, en lugar de EVP_BytesToKey.
 
+
 **Contraseñas**:
 
 - La seguridad depende de la fuerza de tu contraseña.
 - Si la contraseña es corta o fácil de adivinar, AES no ayuda mucho.
 - Usa mezcla de letras mayúsculas/minúsculas, números y símbolos: !@#$%^&*()-_=+[]{}<>?
 - Evita palabras del diccionario o nombres propios.
-- Considera frases de contraseña:
-  - Ejemplo: MiGato$Come2Pescados! → fácil de recordar, fuerte y >16 caracteres.
+- Considera frases de contraseña: MiGato$Come2Pescados! → fácil de recordar, fuerte y >16 caracteres.
 - Si usas derivación moderna (PBKDF2 o scrypt), puedes usar contraseñas más cortas, pero mejor mínimo 12 caracteres.
+
+| Tipo de contraseña | Longitud mínima  | Comentario                                                          |
+| ------------------ | ---------------- | ------------------------------------------------------------------- |
+| Humana base        | 12–16 caracteres | Mezclar mayúsculas, minúsculas, números y símbolos.                 |
+| Humana fuerte      | 16–20 caracteres | Mejor, reduce riesgos de fuerza bruta.                              |
+| Generada aleatoria | 32+ caracteres   | Ideal para máxima seguridad; difícil de memorizar, pero muy seguro. |
+
 
 **Notas:**
 
@@ -50,7 +59,10 @@ Autenticación de mensaje:
 | -------------------------  | ---------------- | -------- | ------------------------------------------ |
 | **Código CryptoJS actual** | EVP_BytesToKey   | CBC      | Rápido pero débil para contraseñas humanas |
 
+
 **Mayor seguridad:**
+
+Para aumentar la seguridad se puede utilizar Web Crypto API del navegador.
 
 | Implementación             | Derivación clave | AES modo | Seguridad principal                        |
 | AES-GCM + PBKDF2           | PBKDF2           | GCM      | Muy seguro, confidencialidad + integridad  |
