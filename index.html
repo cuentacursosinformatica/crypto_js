@@ -46,6 +46,22 @@ footer {
   color: #666;
 }
 
+/* Estilos para el indicador de fortaleza */
+.password-container {
+  position: relative;
+}
+
+.fortaleza-password {
+  position: absolute;
+  right: 10px;
+  top: 32px;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 3px;
+  display: none;
+}
+
 .fortaleza-baja {
   color: #d32f2f;          /* Rojo oscuro */
   background-color: #ffebee; /* Fondo rojo claro */
@@ -68,25 +84,33 @@ footer {
 
 function comprobarFortaleza() {
   const password = document.getElementById("tu_password").value;
-	console.log(password);
-	
+  const indicador = document.getElementById("fortaleza_indicador");
   const longitud = password.length;
-	console.log(longitud);
-
   
+  // Si no hay contraseña, ocultar indicador
   if (longitud === 0) {
-    // Ocultar si no hay texto
     indicador.style.display = "none";
-	  console.log("long=0");
     return;
   }
   
-  // Evaluar según longitud:
-  if (longitud < 12) → "Baja" (rojo)
-  else if (longitud < 32) → "Bien" (naranja)
-  else → "Mejor" (verde)
+  // Mostrar indicador
+  indicador.style.display = "block";
+  
+  // Eliminar clases anteriores
+  indicador.classList.remove("fortaleza-baja", "fortaleza-bien", "fortaleza-mejor");
+  
+  // Evaluar fortaleza según longitud
+  if (longitud < 12) {
+    indicador.textContent = "Baja";
+    indicador.classList.add("fortaleza-baja");
+  } else if (longitud < 32) {
+    indicador.textContent = "Bien";
+    indicador.classList.add("fortaleza-bien");
+  } else {
+    indicador.textContent = "Mejor";
+    indicador.classList.add("fortaleza-mejor");
+  }
 }
-
 
 	
 // Validar que los campos no están vacíos antes de la operación
