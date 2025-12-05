@@ -68,11 +68,16 @@ footer {
 
 function comprobarFortaleza() {
   const password = document.getElementById("tu_password").value;
+	console.log(password);
+	
   const longitud = password.length;
+	console.log(longitud);
+
   
   if (longitud === 0) {
     // Ocultar si no hay texto
     indicador.style.display = "none";
+	  console.log("long=0");
     return;
   }
   
