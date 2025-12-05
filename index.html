@@ -51,17 +51,34 @@ footer {
 
 <script>
 // Validar que los campos no están vacíos antes de la operación
-	
- function validarCampos() {
+function validarCampos() {
   const password = document.getElementById("tu_password").value.trim();
+  const password_confirm = document.getElementById("tu_password_confirm").value.trim();
   const mensaje = document.getElementById("mensaje_cifrar").value.trim();
   
+  // Verificar que la contraseña no esté vacía
   if (password === "") {
     alert("⚠️ Por favor, escribe una contraseña");
     document.getElementById("tu_password").focus();
     return false;
   }
   
+  // Verificar que la confirmación no esté vacía
+  if (password_confirm === "") {
+    alert("⚠️ Por favor, confirma tu contraseña");
+    document.getElementById("tu_password_confirm").focus();
+    return false;
+  }
+  
+  // Verificar que ambas contraseñas coincidan
+  if (password !== password_confirm) {
+    alert("❌ Las contraseñas no coinciden. Por favor, verifica.");
+    document.getElementById("tu_password_confirm").focus();
+    document.getElementById("tu_password_confirm").select();
+    return false;
+  }
+  
+  // Verificar que el mensaje no esté vacío
   if (mensaje === "") {
     alert("⚠️ Por favor, escribe un mensaje");
     document.getElementById("mensaje_cifrar").focus();
@@ -69,8 +86,8 @@ footer {
   }
   
   return true; // Todo OK
-} 
-
+}
+ 
 
 function copiarTextoCifrado(){
 	const mensaje_cifrado = document.getElementById("mensaje_cifrado").value
