@@ -1,109 +1,378 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Cifrar con CryptoJS + PBKDF2</title>
+<title>CryptoJS AES-256 + PBKDF2</title>
+<link rel="icon" href="data:,">
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-* { box-sizing: border-box; }
-body { font-family:verdana; font-size:14px; }
+* {
+  box-sizing: border-box; /* incluye padding y border en el width */
+}
+a.invisible-link {
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+
+body{ font-family:verdana;font-size:14px; }
 h1 { border-bottom: solid 1px red; border-color:grey; }
 
-div { margin-top:0px; width:90%; margin-left:16px; }
-label { width:250px; margin-bottom:1px; display:block; }
-input { width:100%; margin-top:4px; margin-bottom:8px; }
-button { height:25px; margin-bottom:6px; }
+div {
+  margin-top: 0px;
+  margin-bottom: 4px;
+  width: 90%;
+  margin-left: 16px;
+}
+
+label { 
+  width:250px;
+  margin-bottom: 1px;
+  display: block;
+}
+
+input {
+  width: 100%;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+button {
+  height: 25px;
+  margin-bottom: 6px;
+}
 .boton_grande { width:100%; }
-textarea { width:100%; margin-top:4px; margin-bottom:4px; }
+textarea {
+  width: 100%;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+footer {
+  width: 90%;
+  margin-top: 20px;
+  margin-left: 16px;
+  padding-left: 0px;
+  text-align: center;
+  background-color: #f5f5f5;
+  border-top: 1px solid #ddd;
+  font-size: 14px;
+  color: #666;
+}
+
+footer div {
+  margin: 0;
+}
+
+/* Estilos para el indicador de fortaleza */
+.password-container {
+  position: relative;
+}
+
+.fortaleza-password {
+  position: absolute;
+  right: 10px;
+  top: 32px;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 3px;
+  display: none;
+}
+
+.fortaleza-baja {
+  color: #d32f2f;          /* Rojo oscuro */
+  background-color: #ffebee; /* Fondo rojo claro */
+}
+
+.fortaleza-bien {
+  color: #f57c00;          /* Naranja */
+  background-color: #fff3e0; /* Fondo naranja claro */
+}
+
+.fortaleza-mejor {
+  color: #388e3c;          /* Verde */
+  background-color: #e8f5e9; /* Fondo verde claro */
+}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
 <script>
-function copiarTextoCifrado(){
-    const mensaje_cifrado = document.getElementById("mensaje_cifrado").value;
-    if (mensaje_cifrado !== "") {
-        navigator.clipboard.writeText(mensaje_cifrado)
-            .then(() => { console.log("Salida copiada."); })
-            .catch(err => { console.log("Error al copiar: ", err); });
-    }
+// Indicador de fortaleza de contraseña (igual que en la versión original)
+function comprobarFortaleza() {
+  const password = document.getElementById("tu_password").value;
+  const indicador = document.getElementById("fortaleza_indicador");
+  const longitud = password.length;
+  
+  // Si no hay contraseña, ocultar indicador
+  if (longitud === 0) {
+    indicador.style.display = "none";
+    return;
+  }
+  
+  // Mostrar indicador
+  indicador.style.display = "block";
+  
+  // Eliminar clases anteriores
+  indicador.classList.remove("fortaleza-baja", "fortaleza-bien", "fortaleza-mejor");
+  
+  // Evaluar fortaleza según longitud
+  if (longitud < 12) {
+    indicador.textContent = "Baja";
+    indicador.classList.add("fortaleza-baja");
+  } else if (longitud < 32) {
+    indicador.textContent = "Bien";
+    indicador.classList.add("fortaleza-bien");
+  } else {
+    indicador.textContent = "Mejor";
+    indicador.classList.add("fortaleza-mejor");
+  }
 }
 
-function cifrar(){
-    const password = document.getElementById("tu_password").value;
-    const mensaje = document.getElementById("mensaje_cifrar").value;
-    if(!password || !mensaje) return alert("Escribe contraseña y mensaje.");
-
-    // Generar salt y derivar clave con PBKDF2
-    const salt = CryptoJS.lib.WordArray.random(128/8); // 16 bytes
-    const key = CryptoJS.PBKDF2(password, salt, { keySize: 256/32, iterations: 100000, hasher: CryptoJS.algo.SHA256 });
-
-    // Generar IV aleatorio
-    const iv = CryptoJS.lib.WordArray.random(128/8);
-
-    // Cifrar con AES-CBC
-    const encrypted = CryptoJS.AES.encrypt(mensaje, key, { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
-
-    // Combinar salt + iv + ciphertext en Base64 para guardar todo
-    const paquete = salt.toString() + iv.toString() + encrypted.ciphertext.toString();
-    document.getElementById("mensaje_cifrado").value = paquete;
+// Validar que los campos no están vacíos antes de CIFRAR
+// (para descifrar haremos una validación específica)
+function validarCampos() {
+  const password = document.getElementById("tu_password").value.trim();
+  const password_confirm = document.getElementById("tu_password_confirm").value.trim();
+  const mensaje = document.getElementById("mensaje_cifrar").value.trim();
+  
+  // Verificar que la contraseña no esté vacía
+  if (password === "") {
+    alert("⚠️ Por favor, escribe una contraseña");
+    document.getElementById("tu_password").focus();
+    return false;
+  }
+  
+  // Verificar que la confirmación no esté vacía
+  if (password_confirm === "") {
+    alert("⚠️ Por favor, confirma tu contraseña");
+    document.getElementById("tu_password_confirm").focus();
+    return false;
+  }
+  
+  // Verificar que ambas contraseñas coincidan
+  if (password !== password_confirm) {
+    alert("❌ Las contraseñas no coinciden. Por favor, verifica.");
+    document.getElementById("tu_password_confirm").focus();
+    document.getElementById("tu_password_confirm").select();
+    return false;
+  }
+  
+  // Verificar que el mensaje de entrada no esté vacío
+  if (mensaje === "") {
+    alert("⚠️ Por favor, escribe un mensaje de entrada");
+    document.getElementById("mensaje_cifrar").focus();
+    return false;
+  }
+  
+  return true; // Todo OK
 }
 
-function descifrar(){
-    const password = document.getElementById("tu_password").value;
-    const paquete = document.getElementById("mensaje_cifrado").value;
-    if(!password || !paquete) return alert("Escribe contraseña y mensaje cifrado.");
+// Copiar texto de la caja de salida
+function copiarTextoCifrado() {
+  const mensaje_cifrado = document.getElementById("mensaje_cifrado").value;
+  if (mensaje_cifrado !== "") {
+    navigator.clipboard.writeText(mensaje_cifrado)
+      .then(() => { 
+        console.log("Salida copiada, ahora se puede pegar en otra app...");
+      })
+      .catch(err => { console.log("Error al copiar: ", err); });
+  }
+}
 
-    try {
-        // Extraer salt, iv y ciphertext
-        const salt = CryptoJS.enc.Hex.parse(paquete.substr(0,32)); // 16 bytes = 32 hex
-        const iv = CryptoJS.enc.Hex.parse(paquete.substr(32,32));  // 16 bytes = 32 hex
-        const ciphertext = CryptoJS.enc.Hex.parse(paquete.substr(64));
+// CIFRAR con PBKDF2 + AES-CBC
+function cifrar() {
+  if (!validarCampos()) {
+    return; // Sale si hay error en la validación
+  }
 
-        // Derivar clave con PBKDF2
-        const key = CryptoJS.PBKDF2(password, salt, { keySize: 256/32, iterations: 100000, hasher: CryptoJS.algo.SHA256 });
+  const password = document.getElementById("tu_password").value;
+  const mensaje = document.getElementById("mensaje_cifrar").value;
+  const mensaje_cifrado_caja = document.getElementById("mensaje_cifrado");
 
-        // Descifrar
-        const decrypted = CryptoJS.AES.decrypt({ciphertext: ciphertext}, key, { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 });
-        const mensajeOriginal = decrypted.toString(CryptoJS.enc.Utf8);
+  // Generar salt aleatorio (16 bytes)
+  const salt = CryptoJS.lib.WordArray.random(128/8);
 
-        document.getElementById("mensaje_cifrado").value = mensajeOriginal;
-    } catch(e){
-        alert("Error al descifrar. Contraseña incorrecta o mensaje corrupto.");
-        console.log(e);
+  // Derivar clave con PBKDF2 (AES-256)
+  const key = CryptoJS.PBKDF2(password, salt, {
+    keySize: 256/32,
+    iterations: 100000,
+    hasher: CryptoJS.algo.SHA256
+  });
+
+  // Generar IV aleatorio (16 bytes)
+  const iv = CryptoJS.lib.WordArray.random(128/8);
+
+  // Cifrar con AES-CBC + PKCS#7
+  const encrypted = CryptoJS.AES.encrypt(mensaje, key, {
+    iv: iv,
+    mode: CryptoJS.mode.CBC,
+    padding: CryptoJS.pad.Pkcs7
+  });
+
+  // Combinar salt + iv + ciphertext en HEX para guardar todo
+  const paquete = salt.toString() + iv.toString() + encrypted.ciphertext.toString();
+
+  mensaje_cifrado_caja.value = paquete;
+  console.log("Salt (hex):", salt.toString());
+  console.log("IV   (hex):", iv.toString());
+  console.log("Ciphertext:", encrypted.ciphertext.toString());
+}
+
+// DESCIFRAR con PBKDF2 + AES-CBC
+function descifrar() {
+  const password = document.getElementById("tu_password").value.trim();
+  const password_confirm = document.getElementById("tu_password_confirm").value.trim();
+  const paquete = document.getElementById("mensaje_cifrado").value.trim();
+
+  // Validaciones específicas para descifrar
+  if (password === "") {
+    alert("⚠️ Por favor, escribe una contraseña");
+    document.getElementById("tu_password").focus();
+    return;
+  }
+
+  if (password_confirm === "") {
+    alert("⚠️ Por favor, confirma tu contraseña");
+    document.getElementById("tu_password_confirm").focus();
+    return;
+  }
+
+  if (password !== password_confirm) {
+    alert("❌ Las contraseñas no coinciden. Por favor, verifica.");
+    document.getElementById("tu_password_confirm").focus();
+    document.getElementById("tu_password_confirm").select();
+    return;
+  }
+
+  if (paquete === "") {
+    alert("⚠️ Por favor, pega o escribe el mensaje cifrado en la caja de salida.");
+    document.getElementById("mensaje_cifrado").focus();
+    return;
+  }
+
+  try {
+    // Extraer salt, iv y ciphertext del paquete HEX
+    const saltHex = paquete.substr(0, 32);   // 16 bytes = 32 hex
+    const ivHex   = paquete.substr(32, 32);  // 16 bytes = 32 hex
+    const ctHex   = paquete.substr(64);      // resto = ciphertext
+
+    const salt = CryptoJS.enc.Hex.parse(saltHex);
+    const iv   = CryptoJS.enc.Hex.parse(ivHex);
+    const ciphertext = CryptoJS.enc.Hex.parse(ctHex);
+
+    // Derivar clave con PBKDF2 (mismos parámetros que al cifrar)
+    const key = CryptoJS.PBKDF2(password, salt, {
+      keySize: 256/32,
+      iterations: 100000,
+      hasher: CryptoJS.algo.SHA256
+    });
+
+    // Descifrar
+    const decrypted = CryptoJS.AES.decrypt(
+      { ciphertext: ciphertext },
+      key,
+      {
+        iv: iv,
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7
+      }
+    );
+
+    const mensajeOriginal = decrypted.toString(CryptoJS.enc.Utf8);
+
+    if (!mensajeOriginal) {
+      // Si la conversión a UTF-8 falla o está vacía, normalmente indica error
+      alert("Error al descifrar. Contraseña incorrecta o mensaje corrupto.");
+      return;
     }
+
+    // Mostrar el mensaje original en la caja de salida
+    document.getElementById("mensaje_cifrado").value = mensajeOriginal;
+    console.log("Mensaje descifrado:", mensajeOriginal);
+
+  } catch (e) {
+    alert("Error al descifrar. Contraseña incorrecta o mensaje corrupto.");
+    console.log(e);
+  }
 }
 </script>
 </head>
+
 <body>
-<h1>Cifrar AES CryptoJS + PBKDF2</h1>
-<p>Instrucciones:</p>
-<ol>
-<li>Escribe una contraseña</li>
-<li>Teclea tu mensaje de entrada</li>
-<li>Pulsa el botón para cifrar o descifrar</li>
-</ol>
-<hr><br>
 <div>
-<label for="tu_password">Contraseña:</label>
-<input type="text" name="contraseña" id="tu_password" placeholder="escribe tu contraseña" >
+  <h1>CryptoJS AES-256 + PBKDF2</h1>
 </div>
+
 <div>
-<label for="mensaje_cifrar">Mensaje entrada:</label>
-<input type="text" name="mensaje" id="mensaje_cifrar" placeholder="escribe tu mensaje para cifrar" >
+  <p>Instrucciones:</p>
+  <ol>
+    <li>Escribe tu contraseña</li>
+    <li>Repite la contraseña para confirmarla</li>
+    <li>Escribe tu mensaje de entrada</li>
+    <li>Pulsa el botón <strong>Cifrar</strong> o <strong>Descifrar</strong></li>
+  </ol>
+  <hr><br>
 </div>
+
+<div class="password-container">
+  <label for="tu_password">Contraseña:</label>
+  <input type="password" name="contraseña" id="tu_password"
+         placeholder="escribe tu contraseña"
+         oninput="comprobarFortaleza()">
+  <span id="fortaleza_indicador" class="fortaleza-password"></span>
+</div>
+
+<div>
+  <label for="tu_password_confirm">Repite contraseña:</label>
+  <input type="password" name="contraseña" id="tu_password_confirm"
+         placeholder="escribe tu contraseña de nuevo">
+</div>
+
+<div>
+  <label for="mensaje_cifrar">Mensaje entrada:</label>
+  <input type="text" name="mensaje" id="mensaje_cifrar"
+         placeholder="escribe tu mensaje para cifrar">
+</div>
+
 <br>
+
 <div>
-<button type="button" class="boton_grande" onclick="cifrar()">CIFRAR</button>    
+  <button type="button" class="boton_grande" onclick="cifrar()">Cifrar</button>
 </div>
 <div>
-<button type="button" class="boton_grande" onclick="descifrar()">DESCIFRAR</button>
+  <button type="button" class="boton_grande" onclick="descifrar()">Descifrar</button>
 </div>
+
 <br>
+
 <div>
-<label for="mensaje_cifrado">Mensaje salida:</label>
-<textarea rows="6" type="text" name="mensaje_cifrado" id="mensaje_cifrado" placeholder="Aquí aparece el mensaje cifrado o descifrado" ></textarea>
+  <label for="mensaje_cifrado">Mensaje salida (cifrado o descifrado):</label>
+  <textarea rows="6" name="mensaje_cifrado" id="mensaje_cifrado"
+            placeholder="aquí aparecerá el mensaje cifrado (HEX) o el texto descifrado"></textarea>
 </div>
+
 <div>
-<button type="button" class="boton_grande" onclick="copiarTextoCifrado()">COPIAR SALIDA</button>
+  <button type="button" class="boton_grande" onclick="copiarTextoCifrado()">Copiar salida</button>
 </div>
+
+<footer>
+  <div style="width:100%;text-align: center;">
+    <p><strong>Cifrador AES-256 + PBKDF2</strong></p>
+    <p>Usando CryptoJS 4.2.0 (AES-CBC + PBKDF2 + SHA-256)</p>
+    <p style="font-size: 12px; color: #888;">
+      ⚠️ Para uso educativo ⚠️
+    </p>
+    <p style="font-size: 12px; color: #888;">
+      No usar para datos críticos sin seguridad adicional (HMAC, etc.)
+    </p>
+    <p style="font-size: 10px; color: #888;">
+      <a href="" class="invisible-link">05-12-25</a>
+    </p>
+    <br>
+  </div>
+</footer>
+
 </body>
 </html>
