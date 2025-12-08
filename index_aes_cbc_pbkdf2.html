@@ -244,7 +244,9 @@ if (!validarCampos()) {
     const salt = CryptoJS.enc.Hex.parse(saltHex);
     const iv   = CryptoJS.enc.Hex.parse(ivHex);
     const ciphertext = CryptoJS.enc.Hex.parse(ctHex);
-
+// INICIO MEDICIÓN
+    console.time('Derivacion (Descifrar)');
+    
     // Derivar clave con PBKDF2 (mismos parámetros que al cifrar)
     const key = CryptoJS.PBKDF2(password, salt, {
       keySize: 256/32,
@@ -252,6 +254,9 @@ if (!validarCampos()) {
       hasher: CryptoJS.algo.SHA256
     });
 
+    // FIN MEDICIÓN
+    console.timeEnd('Derivacion (Descifrar)');
+    
     // Descifrar
     const decrypted = CryptoJS.AES.decrypt(
       { ciphertext: ciphertext },
