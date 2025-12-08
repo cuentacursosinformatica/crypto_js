@@ -258,7 +258,8 @@ if (!validarCampos()) {
     const salt = CryptoJS.enc.Hex.parse(saltHex);
     const iv   = CryptoJS.enc.Hex.parse(ivHex);
     const ciphertext = CryptoJS.enc.Hex.parse(ctHex);
-// INICIO MEDICIÓN
+
+    // INICIO MEDICIÓN
     console.time('Derivacion (Descifrar)');
     
     // Derivar clave con PBKDF2 (mismos parámetros que al cifrar)
@@ -381,7 +382,7 @@ if (!validarCampos()) {
     <p style="font-size: 10px; color: #888;">
       <a href="index.html" class="invisible-link">AES-128 simple</a>
     </p>
-    <p id="tiempo_ejecucion: " style="color: #007bff; font-weight: bold; font-size: 13px; min-height: 20px;"></p>
+    <p id="tiempo_ejecucion" style="color: #007bff; font-weight: bold; font-size: 13px; min-height: 20px;"></p>
      <p style="font-size: 10px; color: #888;">07-12-25</p>
     
     <br>
