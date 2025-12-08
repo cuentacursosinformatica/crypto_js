@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>...CryptoJS AES-256 CBC + PBKDF2</title>
+<title>CryptoJS AES-256 CBC + PBKDF2</title>
 <link rel="icon" href="data:,">
 
 <meta charset="UTF-8">
@@ -187,6 +187,9 @@ function cifrar() {
     return; // Sale si hay error en la validación
   }
 
+// 1. INICIAR CRONÓMETRO
+  const t_inicio = performance.now();
+  
   const password = document.getElementById("tu_password").value;
   const mensaje = document.getElementById("mensaje_cifrar").value;
   const mensaje_cifrado_caja = document.getElementById("mensaje_cifrado");
@@ -218,6 +221,15 @@ function cifrar() {
   // Combinar salt + iv + ciphertext en HEX para guardar todo
   const paquete = salt.toString() + iv.toString() + encrypted.ciphertext.toString();
 
+  // 2. PARAR CRONÓMETRO Y CALCULAR
+  const t_final = performance.now();
+  const tiempoTotal = (t_final - t_inicio).toFixed(2); // Redondear a 2 decimales
+
+  // 3. MOSTRAR EN EL HTML
+  document.getElementById("tiempo_ejecucion").innerText = `⏱️ Tiempo de cifrado: ${tiempoTotal} ms`;
+  
+  // Opcional: Mantener el console.log para depuración
+  console.log("Tiempo total: " + tiempoTotal + " ms");
   mensaje_cifrado_caja.value = paquete;
   console.log("Salt (hex):", salt.toString());
   console.log("IV   (hex):", iv.toString());
@@ -229,6 +241,8 @@ function descifrar() {
 if (!validarCampos()) {
     return; // Sale si hay error en la validación
   }
+  // 1. INICIAR CRONÓMETRO
+  const t_inicio = performance.now();
   
   const password = document.getElementById("tu_password").value.trim();
   const password_confirm = document.getElementById("tu_password_confirm").value.trim();
@@ -280,6 +294,15 @@ if (!validarCampos()) {
     document.getElementById("mensaje_cifrado").value = mensajeOriginal;
     console.log("Mensaje descifrado:", mensajeOriginal);
 
+// 2. PARAR CRONÓMETRO
+    const t_final = performance.now();
+    const tiempoTotal = (t_final - t_inicio).toFixed(2);
+
+    // 3. MOSTRAR EN EL HTML
+    document.getElementById("tiempo_ejecucion").innerText = `⏱️ Tiempo de descifrado: ${tiempoTotal} ms`;
+
+
+    
   } catch (e) {
     alert("Error al descifrar. Contraseña incorrecta o mensaje corrupto.");
     console.log(e);
@@ -358,7 +381,9 @@ if (!validarCampos()) {
     <p style="font-size: 10px; color: #888;">
       <a href="index.html" class="invisible-link">AES-128 simple</a>
     </p>
+    <p id="tiempo_ejecucion: " style="color: #007bff; font-weight: bold; font-size: 13px; min-height: 20px;"></p>
      <p style="font-size: 10px; color: #888;">07-12-25</p>
+    
     <br>
   </div>
 </footer>
