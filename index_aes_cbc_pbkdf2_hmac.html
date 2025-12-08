@@ -1,1 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>CryptoJS AES-256 + PBKDF2 + HMAC</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body{ font-family:verdana;font-size:14px; }
+  .container { width: 90%; margin-left: 16px; margin-bottom: 10px; }
+  input, textarea, button { width: 100%; margin-top: 5px; margin-bottom: 5px; }
+  button { height: 30px; }
+  .error { color: red; font-weight: bold; }
+  .success { color: green; font-weight: bold; }
+  #tiempo_ejecucion { color: #007bff; font-weight: bold; font-size: 13px; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
+<script>
+// (Aquí irían tus funciones validarCampos y comprobarFortaleza igual que en la V2)
+// ...
+
+function cifrar() {
+  // ... validaciones previas ...
+  const password = document.getElementById("tu_password").value;
+  const mensaje = document.getElementById("mensaje_cifrar").value;
+
+  // UI: Calculando...
+  document.getElementById("btn_cifrar").innerText = "Calculando...";
+  
+  setTimeout(() => {
+    const t_inicio = performance.now();
+
+    // 1. Generar Salt y Clave AES (igual que V2)
+    const salt = CryptoJS.lib.WordArray.random(128/8); 
+    const keyAES = CryptoJS.PBKDF2(password, salt, {
+      keySize: 256/32,
+      iterations: 100000,
+      hasher: CryptoJS.algo.SHA256
+    });
+
+    // 2. Cifrar (igual que V2)
+    const iv = CryptoJS.lib.WordArray.random(128/8);
+    const encrypted = CryptoJS.AES.encrypt(mensaje, keyAES, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
+
+    // 3. Preparar el paquete cifrado (Salt + IV + Ciphertext)
+    // Nota: Es importante firmar TAMBIÉN el Salt y el IV para evitar manipulaciones ahí.
+    const paqueteCifradoHex = salt.toString() + iv.toString() + encrypted.ciphertext.toString();
+    const paqueteWordArray = CryptoJS.enc.Hex.parse(paqueteCifradoHex);
+
+    // --- NUEVO V3: CALCULAR HMAC ---
+    // Usamos la password como clave para el HMAC (o podríamos derivar una segunda clave)
+    // HMAC-SHA256 genera 32 bytes (64 caracteres hex)
+    const hmac = CryptoJS.HmacSHA256(paqueteWordArray, password);
+    const hmacHex = hmac.toString();
+
+    // 4. Concatenar al final: [PaqueteCifrado] + [HMAC]
+    const resultadoFinal = paqueteCifradoHex + hmacHex;
+
+    document.getElementById("mensaje_cifrado").value = resultadoFinal;
+
+    // Métricas
+    const t_final = performance.now();
+    document.getElementById("tiempo_ejecucion").innerText = `⏱️ Cifrado + HMAC: ${(t_final - t_inicio).toFixed(2)} ms`;
+    document.getElementById("btn_cifrar").innerText = "Cifrar";
+    
+    console.log("HMAC adjunto:", hmacHex);
+  }, 20);
+}
+
+function descifrar() {
+  // ... validaciones ...
+  const password = document.getElementById("tu_password").value;
+  const paqueteCompleto = document.getElementById("mensaje_cifrado").value.trim();
+
+  document.getElementById("btn_descifrar").innerText = "Calculando...";
+
+  setTimeout(() => {
+    try {
+      const t_inicio = performance.now();
+
+      // Longitud del HMAC SHA-256 en Hex = 64 caracteres (32 bytes)
+      const longitudHMAC = 64; 
+      
+      // Separar el contenido: [Todo lo cifrado] <--corte--> [HMAC]
+      if (paqueteCompleto.length < longitudHMAC) throw new Error("Mensaje demasiado corto.");
+
+      const contenidoCifradoHex = paqueteCompleto.substring(0, paqueteCompleto.length - longitudHMAC);
+      const hmacRecibidoHex = paqueteCompleto.substring(paqueteCompleto.length - longitudHMAC);
+
+      // --- NUEVO V3: VERIFICACIÓN DE INTEGRIDAD ---
+      // 1. Recalcular el HMAC con lo que me ha llegado y mi contraseña
+      const contenidoWordArray = CryptoJS.enc.Hex.parse(contenidoCifradoHex);
+      const hmacCalculado = CryptoJS.HmacSHA256(contenidoWordArray, password).toString();
+
+      // 2. Comparar HMAC Recibido vs Calculado
+      if (hmacCalculado !== hmacRecibidoHex) {
+        // ¡ALERTA DE SEGURIDAD!
+        throw new Error("⛔ INTEGRIDAD FALLIDA: El mensaje ha sido manipulado o la contraseña es incorrecta.");
+      }
+      
+      // Si pasamos aquí, el mensaje es AUTÉNTICO. Procedemos a descifrar (Lógica V2)
+      
+      const saltHex = contenidoCifradoHex.substr(0, 32);
+      const ivHex   = contenidoCifradoHex.substr(32, 32);
+      const ctHex   = contenidoCifradoHex.substr(64);
+
+      const salt = CryptoJS.enc.Hex.parse(saltHex);
+      const iv   = CryptoJS.enc.Hex.parse(ivHex);
+      const ciphertext = CryptoJS.enc.Hex.parse(ctHex);
+
+      const keyAES = CryptoJS.PBKDF2(password, salt, {
+        keySize: 256/32,
+        iterations: 100000,
+        hasher: CryptoJS.algo.SHA256
+      });
+
+      const decrypted = CryptoJS.AES.decrypt(
+        { ciphertext: ciphertext },
+        keyAES,
+        { iv: iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }
+      );
+
+      const mensajeOriginal = decrypted.toString(CryptoJS.enc.Utf8);
+
+      if (!mensajeOriginal) throw new Error("Error de descifrado (Padding).");
+
+      document.getElementById("mensaje_cifrado").value = mensajeOriginal;
+      
+      const t_final = performance.now();
+      document.getElementById("tiempo_ejecucion").innerText = `⏱️ Verificación HMAC + Descifrado: ${(t_final - t_inicio).toFixed(2)} ms`;
+
+    } catch (e) {
+      alert(e.message);
+      console.error(e);
+      document.getElementById("tiempo_ejecucion").innerText = "❌ Error de seguridad";
+    } finally {
+      document.getElementById("btn_descifrar").innerText = "Descifrar";
+    }
+  }, 20);
+}
+</script>
+</head>
+<body>
+<h1>Actividad 3: AES-256 + PBKDF2 + HMAC (Integridad)</h1>
+<p>Esta versión verifica que el mensaje no haya sido modificado antes de intentar leerlo.</p>
+</body>
+</html>
